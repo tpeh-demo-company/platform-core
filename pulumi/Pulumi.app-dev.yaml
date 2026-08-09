@@ -9,6 +9,7 @@ config:
     version: 2.9.1
   platform-core:network:
     dockerNetwork: vpc-app-dev
+    # no longer needed , remove later
     extraPortMappings:
       - containerPort: 30080
         hostPort: 9090

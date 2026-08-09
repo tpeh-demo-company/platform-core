@@ -9,6 +9,7 @@ config:
     version: 2.9.x
   platform-core:network:
     dockerNetwork: vpc-platform-sandbox
+    # no longer needed , remove later
     extraPortMappings:
       - containerPort: 30080
         hostPort: 8080
