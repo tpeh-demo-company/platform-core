@@ -3,6 +3,7 @@ config:
     kind-image: kindest/node:v1.36.1
     name: app-dev
     wait-seconds: 60
+    environment: prod
   platform-core:flux:
     url: https://github.com/Jdavid77/platform-gitops
     version: 2.9.1

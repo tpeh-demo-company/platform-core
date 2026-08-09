@@ -63,11 +63,22 @@ k8s = cluster_manager.get_provider(kubeconfig)
 # Flux won't start syncing until that Secret exists in-cluster)
 sops_cfg = pulumi.Config("sops")
 flux_obj = config.require_object("flux")
+flux_components = [
+    "source-controller",
+    "kustomize-controller",
+    "helm-controller",
+    "notification-controller",
+]
+if cls_info["environment"] == "non-prod":
+    flux_components.append("image-reflector-controller")
+    flux_components.append("image-automation-controller")
+
 flux_manager = flux.FluxOperatorManager(
     config=flux.FluxOperatorConfig(
         version=flux_obj.get("version"),
         url=flux_obj.get("url"),
         sourceName=pulumi.get_stack(),
+        components=flux_components,
     ),
     stack_name=pulumi.get_stack(),
     provider=k8s,

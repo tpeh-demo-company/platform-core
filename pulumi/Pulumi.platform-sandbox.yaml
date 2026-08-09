@@ -3,6 +3,7 @@ config:
     kind-image: kindest/node:v1.36.1
     name: platform-sandbox
     wait-seconds: 60
+    environment: non-prod
   platform-core:flux:
     url: https://github.com/Jdavid77/platform-gitops
     version: 2.9.x
