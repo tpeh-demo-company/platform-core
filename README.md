@@ -9,29 +9,57 @@ This repo provisions the core platform: a local [kind](https://kind.sigs.k8s.io/
 
 ## Prerequisites
 
-- [pulumi cli](https://www.pulumi.com/docs/get-started/install/)
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- [docker](https://docs.docker.com/get-docker/)
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)
-- kubectl + [kubelogin](https://github.com/int128/kubelogin) (oidc-login plugin)
-- [flux cli](https://fluxcd.io/flux/installation/)
-- [bats](https://bats-core.readthedocs.io/)
-- [Bitwarden CLI](https://bitwarden.com/help/cli/) (`bw`) — used to fetch the Auth0 secrets
-- An Auth0 tenant (see [`pulumi-shared/README.md`](pulumi-shared/README.md))
+| Tool | Purpose |
+| ---- | ------- |
+| [pulumi](https://www.pulumi.com/docs/get-started/install/) | Infrastructure provisioning |
+| [uv](https://docs.astral.sh/uv/getting-started/installation/) | Python dependency manager for Pulumi projects |
+| [docker](https://docs.docker.com/get-docker/) | Required to create the kind cluster |
+| [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) | Local Kubernetes cluster |
+| kubectl + [kubelogin](https://github.com/int128/kubelogin) | Cluster access via OIDC |
+| [flux](https://fluxcd.io/flux/installation/) | GitOps operator CLI |
+| [bats](https://bats-core.readthedocs.io/) | Infrastructure test runner |
+| [bws](https://bitwarden.com/help/secrets-manager-cli/) | Bitwarden Secrets Manager CLI |
 
-To run the CI pipeline yourself, register a self-hosted runner (`RUNNER_TOKEN=<token> ./scripts/start-runner.sh`) and configure the `platform-sandbox` / `app-dev` GitHub Environments with required reviewers and a `PULUMI_ACCESS_TOKEN` secret.
+You'll also need an Auth0 tenant — see [`pulumi-shared/README.md`](pulumi-shared/README.md).
+
+**CI setup:** register a self-hosted runner (`RUNNER_TOKEN=<token> ./scripts/start-runner.sh`), create the `platform-sandbox` and `app-dev` GitHub Environments with required reviewers, and add a `BWS_ACCESS_TOKEN` repository secret.
 
 ## What's in here
 
-**[`pulumi/`](pulumi/README.md)** — the cluster stack: kind cluster, OIDC config, Flux bootstrap.
+| Path | Description |
+| ---- | ----------- |
+| [`pulumi/`](pulumi/README.md) | Cluster stack — kind cluster, OIDC config, Flux bootstrap |
+| [`pulumi-shared/`](pulumi-shared/README.md) | Auth0/OIDC identity stack — deploy this first |
+| `scripts/start-runner.sh` | Registers and starts the self-hosted GitHub Actions runner |
+| `scripts/flux_reconcile.sh` + `smoke/` | Forces Flux reconciliation and runs an Istio Gateway smoke test |
+| `tests/infrastructure.bats` | Validates Docker network, cluster reachability, and Flux health |
 
-**[`pulumi-shared/`](pulumi-shared/README.md)** — the Auth0/OIDC identity provider stack. Must be deployed before the cluster stack.
+## Environment topology
 
-**`scripts/start-runner.sh`** — installs and starts the self-hosted GitHub Actions runner that the CI pipeline requires (`runs-on: self-hosted`).
+The full promotion model from *The Platform Engineer's Handbook* spans three tiers. This repo implements the stages marked ✅; the others are out of scope.
 
-**`scripts/flux_reconcile.sh`** + **`smoke/`** — forces a Flux reconciliation and runs a Gateway smoke test through Istio to confirm the cluster is actually routing traffic. Run by CI in the `validate-sandbox` / `validate-app-dev` jobs.
+```mermaid
+flowchart LR
+    subgraph local["🖥️ Local"]
+        dev["Developer Machine\nKind Cluster"]
+    end
 
-**`tests/infrastructure.bats`** — validates the Docker network, cluster reachability, and Flux health. Also run by CI in the `validate-sandbox` / `validate-app-dev` jobs.
+    subgraph nonprod["Platform NonProd"]
+        sandbox["✅ platform-sandbox\nTeam Integration\n\nExperimental features\nBreakable\nMinimal data retention"]
+        preview["⬜ platform-preview\nStable / unreleased\n\nMore stable QA\nAutomated testing\nRelease staging"]
+        sandbox --> preview
+    end
+
+    subgraph prod["Platform Prod"]
+        appdev["✅ app-dev\nEngineering Development\n\nProduction-like at\nsmaller scale\nEphemeral environments"]
+        appqa["⬜ app-qa\nEngineering QA/Integration\n\nLarger scale\nIntegration testing"]
+        appprod["⬜ app-prod\nEngineering Production\n\nCustomer facing\nFull SLA\nHighly available"]
+        appdev --> appqa --> appprod
+    end
+
+    dev -->|"push to main"| sandbox
+    sandbox -->|"tag v*"| appdev
+```
 
 ## CI/CD pipeline
 
@@ -64,10 +92,36 @@ app-dev (only on v* tags, once sandbox validates)
                                              (approve-app-dev) --> [update-app-dev] --> [validate-app-dev]
 ```
 
+## GitOps architecture
+
+How the repositories relate at runtime (Figure 2.4 from the book, mapped to our repos):
+
+```mermaid
+flowchart TD
+    core["platform-core\n─────────────\nProvisions cluster\nBootstraps Flux"]
+
+    flux(["Flux Controller\nflux-sandbox / flux-app-dev"])
+
+    gitops["platform-gitops\n─────────────\nApp-of-apps source\nPer-env kustomizations"]
+
+    services["platform-services\n─────────────\nOPA / Istio / Cert-manager\nPer-env service config"]
+
+    subgraph teams["Team Repositories"]
+        app["platform-demo-app\n(sample workload)"]
+        more["engineering team repos …"]
+    end
+
+    core -->|"1 · Deploys & bootstraps"| flux
+    flux -->|"2 · Monitors & applies"| gitops
+    gitops -->|"Contains per-env config\nthat points to"| services
+    gitops -.->|"Points to"| teams
+    flux -->|"3 · Monitors & applies"| teams
+```
+
 ## Related repos
 
 Part of *The Platform Engineer's Handbook* series:
 
 - [**platform-gitops**](https://github.com/Jdavid77/platform-gitops) — the Flux source this cluster reconciles from (app-of-apps pattern).
 - [**platform-services**](https://github.com/Jdavid77/platform-services) — OPA/conftest policies and per-environment service config.
-- [**platform-team-admin**](https://github.com/Jdavid77/platform-team-admin) — manages this GitHub org itself (repos, branch protection) as Pulumi code.
+- [**platform-demo-app**](https://github.com/Jdavid77/platform-demo-app) — sample workload used to validate the platform end-to-end.
