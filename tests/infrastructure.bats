@@ -14,7 +14,13 @@
   [ "$node_count" -ge 1 ]
 }
 
+@test "sops-age secret exists in flux-system" {
+  run kubectl get secret sops-age -n flux-system
+  [ "$status" -eq 0 ]
+}
+
 @test "flux is healthy" {
   run flux check --pre
   [ "$status" -eq 0 ]
 }
+
