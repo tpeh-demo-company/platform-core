@@ -69,7 +69,7 @@ jobs:
         run: uv sync --project pulumi-shared/
 
       - name: Lint with ruff
-        run: uv run --project pulumi-shared/ ruff check pulumi-shared/ --extend-exclude '/\.scripts/'
+        run: uv run --project pulumi-shared/ ruff check pulumi-shared/ --exclude pulumi-shared/.scripts
 
       - name: Security scan with bandit
         run: uv run --project pulumi-shared/ bandit -r pulumi-shared/ -ll --exclude pulumi-shared/.venv,pulumi-shared/.scripts
