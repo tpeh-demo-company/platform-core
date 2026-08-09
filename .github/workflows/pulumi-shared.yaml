@@ -46,7 +46,7 @@ jobs:
         run: uv run --project pulumi-shared/ black --check --diff pulumi-shared/ --extend-exclude '/\.scripts/'
 
       - name: Type check with mypy
-        run: uv run --project pulumi-shared/ mypy pulumi-shared/ --ignore-missing-imports --extend-exclude '/\.scripts/'
+        run: uv run --project pulumi-shared/ mypy pulumi-shared/ --ignore-missing-imports --exclude 'pulumi-shared/\.scripts'
 
   # ── Static analysis ───────────────────────────────────────────────────────────
   static-analysis:
