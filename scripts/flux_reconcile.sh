@@ -1,6 +1,6 @@
 #!/bin/bash
 # Forces Flux reconciliation for the platform infrastructure kustomizations,
-# then runs the Gateway smoke test to validate Istio is routing traffic.
+# then runs a Gateway API smoke test to validate traffic is routing correctly.
 #
 # Usage:
 #   PULUMI_STACK=platform-sandbox SMOKE_HOST=platform-sandbox.local \
@@ -20,9 +20,9 @@ SMOKE_HOST="${SMOKE_HOST:-platform-sandbox.local}"
 echo "==> Forcing Flux reconciliation: ${PULUMI_STACK} in ${NAMESPACE}"
 flux reconcile kustomization "${PULUMI_STACK}" -n "${NAMESPACE}" --with-source
 
-# ── Wait for istio-ingress HelmRelease ───────────────────────────────────────
-echo "==> Waiting for HelmRelease istio-ingress to be Ready (namespace: ${INGRESS_NAMESPACE})"
-kubectl -n "flux-system" wait helmrelease/istio-ingress \
+# ── Wait for istio-gateway ResourceSet ───────────────────────────────────────
+echo "==> Waiting for ResourceSet istio-gateway to be Ready (namespace: ${INGRESS_NAMESPACE})"
+kubectl -n "flux-system" wait resourceset/istio-gateway \
   --for=condition=Ready \
   --timeout=300s \
   || {
@@ -48,6 +48,11 @@ kubectl -n istio-system wait \
   --timeout=60s
 
 kubectl -n istio-system apply -f "${REPO_ROOT}/smoke/http-gateway.yaml"
+kubectl -n istio-system wait gateway/smoke-gateway \
+  --for=condition=Programmed \
+  --timeout=60s \
+  || { echo "ERROR: smoke-gateway did not become Programmed"; exit 1; }
+
 kubectl -n istio-system apply -f "${REPO_ROOT}/smoke/gateway_job.yaml"
 
 kubectl -n istio-system wait \

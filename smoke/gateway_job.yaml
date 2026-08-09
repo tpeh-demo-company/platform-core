@@ -27,7 +27,7 @@ spec:
                 --max-time 10 \
                 --retry 3 \
                 --retry-delay 2 \
-                http://istio-ingressgateway.istio-system.svc.cluster.local/)
+                http://smoke-gateway-istio.istio-system.svc.cluster.local/)
               echo "Gateway response: HTTP $STATUS"
               [ "$STATUS" = "200" ] || { echo "ERROR: expected 200, got $STATUS"; exit 1; }
           resources:
