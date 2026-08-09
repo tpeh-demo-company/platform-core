@@ -11,20 +11,7 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
-if ! bw login --check &>/dev/null; then
-    bw login --apikey
-fi
-
-export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-
-if [ -z "$BW_SESSION" ]; then
-    echo "Error: Failed to unlock Bitwarden vault."
-    exit 1
-fi
-
-sops_item=$(bw get item "SOPS Age Key Platform Services" --session "$BW_SESSION")
-
-sops_age_private_key=$(echo "$sops_item" | jq -r '.fields[] | select(.name == "private-key") | .value')
+sops_age_private_key=$(bws secret list | jq -r '.[] | select(.key == "SOPS_AGE_PRIVATE_KEY") | .value')
 
 (
     cd ..

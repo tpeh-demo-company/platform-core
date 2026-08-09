@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-
-set -eou pipefail\
-
+set -eou pipefail
 
 ENV_FILE="../.env"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -13,29 +11,24 @@ set -o allexport
 source "$ENV_FILE"
 set +o allexport
 
-# Login with API key if not already logged in
-if ! bw login --check &>/dev/null; then
-    bw login --apikey
-fi
-
-export BW_SESSION=$(bw unlock --passwordenv BW_PASSWORD --raw)
-
-if [ -z "$BW_SESSION" ]; then
-    echo -e "Error: Failed to unlock Bitwarden vault. Check your BW_PASSWORD."
+SECRETS_FILE="secrets.json"
+if [[ ! -f "$SECRETS_FILE" ]]; then
+    echo "Can't find secrets.json...exiting"
     exit 1
 fi
 
-for json_file in *.json; do
-    echo "Processing: $json_file"
-    item_name=$(cat "$json_file" | jq -r .name)
-    existing_item=$(bw get item "$item_name" --session "$BW_SESSION" 2>/dev/null)
+while read -r secret; do
+    name=$(echo "$secret" | jq -r '.name')
+    value=$(echo "$secret" | jq -r '.value')
+    note=$(echo "$secret" | jq -r '.note')
 
-    if [ -n "$existing_item" ]; then
-        echo "Item '$item_name' exists, updating..."
-        item_id=$(echo "$existing_item" | jq -r .id)
-        cat "$json_file" | bw encode | bw edit item "$item_id" --session "$BW_SESSION"
+    existing_id=$(bws secret list | jq -r ".[] | select(.key == \"$name\") | .id")
+
+    if [ -n "$existing_id" ]; then
+        echo "Secret '$name' exists, updating..."
+        bws secret edit "$existing_id" --value "$value" --note "$note"
     else
-        echo "Item '$item_name' does not exist, creating..."
-        cat "$json_file" | bw encode | bw create item --session "$BW_SESSION"
+        echo "Secret '$name' does not exist, creating..."
+        bws secret create "$name" "$value" "$BWS_PROJECT_ID" --note "$note"
     fi
-done
+done < <(jq -c '.[]' "$SECRETS_FILE")
