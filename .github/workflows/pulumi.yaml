@@ -1,5 +1,5 @@
 # =============================================================================
-# .github/workflows/pulumi-sandbox.yaml — platform-sandbox + app-dev pipeline
+# .github/workflows/pulumi.yaml — platform-sandbox + app-dev pipeline
 # =============================================================================
 # Runs on every push to main (sandbox only) and on release tags v* (sandbox
 # then app-dev, sequentially).
@@ -15,12 +15,13 @@
 name: Pulumi
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - "pulumi/**"
-      - ".github/workflows/pulumi-sandbox.yaml"
+      - ".github/workflows/pulumi.yaml"
     tags:
       - "v*"
 
