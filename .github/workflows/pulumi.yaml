@@ -22,15 +22,19 @@ on:
     paths:
       - "pulumi/**"
       - ".github/workflows/pulumi.yaml"
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: ["Tag"]
+    types:
+      - completed
 
 jobs:
   lint:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     uses: ./.github/workflows/lint.yaml
 
   # ── Platform Sandbox ──────────────────────────────────────────────────────────
   pre-flight:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     needs: [lint]
     uses: ./.github/workflows/pre-flight.yaml
     with:
@@ -39,6 +43,7 @@ jobs:
       BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
   deploy-sandbox:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     needs: [pre-flight]
     uses: ./.github/workflows/preview-apply-env.yaml
     with:
@@ -46,9 +51,9 @@ jobs:
     secrets:
       BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
-  # ── App Dev (release tags only) ───────────────────────────────────────────────
+  # ── App Dev (tag releases only, via Tag workflow) ─────────────────────────────
   pre-flight-app-dev:
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     needs: [deploy-sandbox]
     uses: ./.github/workflows/pre-flight.yaml
     with:
@@ -57,7 +62,7 @@ jobs:
       BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
   deploy-app-dev:
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     needs: pre-flight-app-dev
     uses: ./.github/workflows/preview-apply-env.yaml
     with:
