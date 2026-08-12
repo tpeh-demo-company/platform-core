@@ -2,6 +2,17 @@ name: Lint & SAST
 
 on:
   workflow_call:
+    inputs:
+      project_dir:
+        description: "Directory containing the Pulumi project"
+        required: false
+        type: string
+        default: pulumi
+      extra_exclude:
+        description: "Additional path to exclude from linters (e.g. pulumi-shared/.scripts)"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   lint-actions:
@@ -30,21 +41,25 @@ jobs:
       - name: Cache uv virtual environment
         uses: actions/cache@v4
         with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          path: ${{ inputs.project_dir }}/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles(format('{0}/uv.lock', inputs.project_dir)) }}
           restore-keys: uv-venv-${{ runner.os }}-
-      
+
       - name: Install Uv
         uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d
 
       - name: Install dependencies
-        run: uv sync --project pulumi/
+        run: uv sync --project ${{ inputs.project_dir }}/
 
       - name: Check code formatting with black
-        run: uv run --project pulumi/ black --check --diff pulumi/
+        run: |
+          uv run --project ${{ inputs.project_dir }}/ black --check --diff ${{ inputs.project_dir }}/ \
+            ${{ inputs.extra_exclude != '' && format('--extend-exclude "/{0}/"', inputs.extra_exclude) || '' }}
 
       - name: Type check with mypy
-        run: uv run --project pulumi/ mypy pulumi/ --ignore-missing-imports
+        run: |
+          uv run --project ${{ inputs.project_dir }}/ mypy ${{ inputs.project_dir }}/ --ignore-missing-imports \
+            ${{ inputs.extra_exclude != '' && format('--exclude "{0}"', inputs.extra_exclude) || '' }}
 
   # ── Static analysis ───────────────────────────────────────────────────────────
   static-analysis:
@@ -52,22 +67,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Install Uv
         uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d
 
       - name: Cache uv virtual environment
         uses: actions/cache@v4
         with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          path: ${{ inputs.project_dir }}/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles(format('{0}/uv.lock', inputs.project_dir)) }}
           restore-keys: uv-venv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: uv sync --project pulumi/
+        run: uv sync --project ${{ inputs.project_dir }}/
 
       - name: Lint with ruff
-        run: uv run --project pulumi/ ruff check pulumi/
+        run: |
+          uv run --project ${{ inputs.project_dir }}/ ruff check ${{ inputs.project_dir }}/ \
+            ${{ inputs.extra_exclude != '' && format('--exclude {0}', inputs.extra_exclude) || '' }}
 
       - name: Security scan with bandit
-        run: uv run --project pulumi/ bandit -r pulumi/ -ll --exclude pulumi/.venv
+        run: |
+          uv run --project ${{ inputs.project_dir }}/ bandit -r ${{ inputs.project_dir }}/ -ll \
+            --exclude ${{ inputs.project_dir }}/.venv${{ inputs.extra_exclude != '' && format(',{0}', inputs.extra_exclude) || '' }}

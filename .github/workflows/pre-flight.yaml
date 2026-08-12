@@ -1,0 +1,42 @@
+name: Pre-flight
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment name (e.g. platform-sandbox, app-dev)"
+        required: true
+        type: string
+    secrets:
+      BWS_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  pre-flight:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Kind cluster is running
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '${{ inputs.environment }}'; then
+            echo "Kind cluster '${{ inputs.environment }}' is not running. Please start it before proceeding."
+            exit 1
+          fi
+
+      - name: Fetch secrets from Bitwarden
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
+
+      - name: Verify OIDC configured for ${{ inputs.environment }}
+        working-directory: pulumi-shared
+        run: |
+          pulumi stack output auth0_issuer_url --stack shared | grep -q 'https://'
+          pulumi stack output "auth0_client_id_${{ inputs.environment }}" --stack shared | grep -qv '^$'
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}

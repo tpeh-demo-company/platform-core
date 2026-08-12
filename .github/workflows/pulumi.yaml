@@ -26,314 +26,41 @@ on:
       - "v*"
 
 jobs:
-
   lint:
     uses: ./.github/workflows/lint.yaml
 
-  # ── Pre-flight checks ────────────────────────────────────────────────────────
+  # ── Platform Sandbox ──────────────────────────────────────────────────────────
   pre-flight:
-    runs-on: self-hosted
     needs: [lint]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    uses: ./.github/workflows/pre-flight.yaml
+    with:
+      environment: platform-sandbox
+    secrets:
+      BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
-      - name: Verify Docker is running
-        run: docker info
+  deploy-sandbox:
+    needs: [pre-flight]
+    uses: ./.github/workflows/preview-apply-env.yaml
+    with:
+      environment: platform-sandbox
+    secrets:
+      BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Verify OIDC configured for platform-sandbox
-        working-directory: pulumi-shared
-        run: |
-          pulumi stack output auth0_issuer_url --stack shared | grep -q 'https://'
-          pulumi stack output auth0_client_id_platform-sandbox --stack shared | grep -qv '^$'
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Pulumi preview ───────────────────────────────────────────────────────────
-  preview-sandbox:
-    runs-on: self-hosted
-    needs: pre-flight
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache uv virtual environment
-        uses: actions/cache@v4
-        with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
-          restore-keys: uv-venv-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: uv sync --project pulumi/
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Run Pulumi preview
-        uses: pulumi/actions@v6
-        with:
-          command: preview
-          stack-name: Jdavid77/platform-core/platform-sandbox
-          color: always
-          work-dir: pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Manual approval gate ──────────────────────────────────────────────────────
-  approve-sandbox:
-    runs-on: self-hosted
-    needs: preview-sandbox
-    environment: platform-sandbox
-    steps:
-      - name: Await manual approval
-        run: echo "Deployment approved"
-
-  # ── Deploy ───────────────────────────────────────────────────────────────────
-  update-sandbox:
-    runs-on: self-hosted
-    needs: approve-sandbox
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache uv virtual environment
-        uses: actions/cache@v4
-        with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
-          restore-keys: uv-venv-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: uv sync --project pulumi/
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Run Pulumi up
-        uses: pulumi/actions@v6
-        with:
-          command: up
-          stack-name: Jdavid77/platform-core/platform-sandbox
-          color: always
-          work-dir: pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Validate ─────────────────────────────────────────────────────────────────
-  validate-sandbox:
-    runs-on: self-hosted
-    needs: update-sandbox
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Export kubeconfig
-        working-directory: pulumi
-        env:
-          PULUMI_STACK: platform-sandbox
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-        run: |
-          pulumi stack output kubeconfig --show-secrets --stack "$PULUMI_STACK" > kubeconfig.yaml
-          echo "KUBECONFIG=$PWD/kubeconfig.yaml" >> "$GITHUB_ENV"
-          DOCKER_NETWORK=$(pulumi stack output dockerNetwork --stack "$PULUMI_STACK")
-          echo "DOCKER_NETWORK=$DOCKER_NETWORK" >> "$GITHUB_ENV"
-
-      - name: Run bats infrastructure tests
-        env:
-          PULUMI_STACK: platform-sandbox
-        run: bats tests/infrastructure.bats
-
-      - name: Force Flux reconciliation and smoke test
-        env:
-          PULUMI_STACK: platform-sandbox
-          SMOKE_HOST: platform-sandbox.local
-        run: bash scripts/flux_reconcile.sh
-
-      - name: Clean up kubeconfig
-        if: always()
-        working-directory: pulumi
-        run: rm -f kubeconfig.yaml
-
-  # =============================================================================
-  # App-Dev — only on release tags (v*), runs after sandbox validates
-  # =============================================================================
-
-  # ── Pre-flight checks ────────────────────────────────────────────────────────
+  # ── App Dev (release tags only) ───────────────────────────────────────────────
   pre-flight-app-dev:
     if: github.ref_type == 'tag'
-    runs-on: self-hosted
-    needs: validate-sandbox
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    needs: [deploy-sandbox]
+    uses: ./.github/workflows/pre-flight.yaml
+    with:
+      environment: app-dev
+    secrets:
+      BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
-      - name: Verify Docker is running
-        run: docker info
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Verify OIDC configured for app-dev
-        working-directory: pulumi-shared
-        run: |
-          pulumi stack output auth0_issuer_url --stack shared | grep -q 'https://'
-          pulumi stack output auth0_client_id_app-dev --stack shared | grep -qv '^$'
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Pulumi preview ───────────────────────────────────────────────────────────
-  preview-app-dev:
+  deploy-app-dev:
     if: github.ref_type == 'tag'
-    runs-on: self-hosted
     needs: pre-flight-app-dev
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache uv virtual environment
-        uses: actions/cache@v4
-        with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
-          restore-keys: uv-venv-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: uv sync --project pulumi/
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Run Pulumi preview
-        uses: pulumi/actions@v6
-        with:
-          command: preview
-          stack-name: Jdavid77/platform-core/app-dev
-          color: always
-          work-dir: pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Manual approval gate ──────────────────────────────────────────────────────
-  approve-app-dev:
-    runs-on: self-hosted
-    needs: preview-app-dev
-    environment: app-dev
-    steps:
-      - name: Await manual approval
-        run: echo "Deployment approved"
-
-  # ── Deploy ───────────────────────────────────────────────────────────────────
-  update-app-dev:
-    runs-on: self-hosted
-    needs: approve-app-dev
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache uv virtual environment
-        uses: actions/cache@v4
-        with:
-          path: pulumi/.venv
-          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
-          restore-keys: uv-venv-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: uv sync --project pulumi/
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Run Pulumi up
-        uses: pulumi/actions@v6
-        with:
-          command: up
-          stack-name: Jdavid77/platform-core/app-dev
-          color: always
-          work-dir: pulumi
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-
-  # ── Validate ─────────────────────────────────────────────────────────────────
-  validate-app-dev:
-    runs-on: self-hosted
-    needs: update-app-dev
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Fetch secrets from Bitwarden
-        uses: bitwarden/sm-action@v2
-        with:
-          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
-          base_url: https://vault.bitwarden.eu
-          secrets: |
-            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
-
-      - name: Export kubeconfig
-        working-directory: pulumi
-        env:
-          PULUMI_STACK: app-dev
-          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
-        run: |
-          pulumi stack output kubeconfig --show-secrets --stack "$PULUMI_STACK" > kubeconfig.yaml
-          echo "KUBECONFIG=$PWD/kubeconfig.yaml" >> "$GITHUB_ENV"
-          DOCKER_NETWORK=$(pulumi stack output dockerNetwork --stack "$PULUMI_STACK")
-          echo "DOCKER_NETWORK=$DOCKER_NETWORK" >> "$GITHUB_ENV"
-
-      - name: Run bats infrastructure tests
-        env:
-          PULUMI_STACK: app-dev
-        run: bats tests/infrastructure.bats
-
-      - name: Force Flux reconciliation and smoke test
-        env:
-          PULUMI_STACK: app-dev
-          SMOKE_HOST: app-dev.local
-        run: bash scripts/flux_reconcile.sh
-
-      - name: Clean up kubeconfig
-        if: always()
-        working-directory: pulumi
-        run: rm -f kubeconfig.yaml
+    uses: ./.github/workflows/preview-apply-env.yaml
+    with:
+      environment: app-dev
+    secrets:
+      BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}

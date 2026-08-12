@@ -1,0 +1,136 @@
+name: Preview Apply Env
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment name (e.g. platform-sandbox, app-dev)"
+        required: true
+        type: string
+    secrets:
+      BWS_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  # ── Pulumi preview ────────────────────────────────────────────────────────────
+  preview:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache uv virtual environment
+        uses: actions/cache@v4
+        with:
+          path: pulumi/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          restore-keys: uv-venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --project pulumi/
+
+      - name: Fetch secrets from Bitwarden
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
+
+      - name: Run Pulumi preview
+        uses: pulumi/actions@v6
+        with:
+          command: preview
+          stack-name: Jdavid77/platform-core/${{ inputs.environment }}
+          color: always
+          work-dir: pulumi
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
+
+  # ── Manual approval gate ──────────────────────────────────────────────────────
+  approve:
+    runs-on: self-hosted
+    needs: preview
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Await manual approval
+        run: echo "Deployment approved"
+
+  # ── Deploy ────────────────────────────────────────────────────────────────────
+  deploy:
+    runs-on: self-hosted
+    needs: approve
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache uv virtual environment
+        uses: actions/cache@v4
+        with:
+          path: pulumi/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          restore-keys: uv-venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --project pulumi/
+
+      - name: Fetch secrets from Bitwarden
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
+
+      - name: Run Pulumi up
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: Jdavid77/platform-core/${{ inputs.environment }}
+          color: always
+          work-dir: pulumi
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
+
+  # ── Validate ──────────────────────────────────────────────────────────────────
+  validate:
+    runs-on: self-hosted
+    needs: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch secrets from Bitwarden
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            f5789e30-d191-4558-b135-b4a100c506ee > PULUMI_ACCESS_TOKEN
+
+      - name: Export kubeconfig
+        working-directory: pulumi
+        env:
+          PULUMI_STACK: ${{ inputs.environment }}
+          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
+        run: |
+          pulumi stack output kubeconfig --show-secrets --stack "$PULUMI_STACK" > kubeconfig.yaml
+          echo "KUBECONFIG=$PWD/kubeconfig.yaml" >> "$GITHUB_ENV"
+          DOCKER_NETWORK=$(pulumi stack output dockerNetwork --stack "$PULUMI_STACK")
+          echo "DOCKER_NETWORK=$DOCKER_NETWORK" >> "$GITHUB_ENV"
+
+      - name: Run bats infrastructure tests
+        env:
+          PULUMI_STACK: ${{ inputs.environment }}
+        run: bats tests/infrastructure.bats
+
+      - name: Force Flux reconciliation and smoke test
+        env:
+          PULUMI_STACK: ${{ inputs.environment }}
+          SMOKE_HOST: ${{ inputs.environment }}.local
+        run: bash scripts/flux_reconcile.sh
+
+      - name: Clean up kubeconfig
+        if: always()
+        working-directory: pulumi
+        run: rm -f kubeconfig.yaml
