@@ -68,28 +68,21 @@ Two independent workflows, one per Pulumi project. `pulumi-shared.yaml` runs on 
 ```text
 pulumi-shared.yaml (push to main, touching pulumi-shared/**)
 ------------------------------------------------------------------
-  [lint-code]       --+
-                      +--> [preview-shared] --> (approve-shared) --> [update-shared]
-  [static-analysis] --+
+  [lint] --> [preview-shared] --> (approve-shared) --> [update-shared]
+   └─ lint.yaml reusable (black, mypy, ruff, bandit)
 
 
 pulumi.yaml (push to main touching pulumi/**, or tag v*)
 ------------------------------------------------------------------
-  [lint-code]       --+
-                        +--> [pre-flight] --> [preview-sandbox]
-  [static-analysis] --+                            |
-                                                   v
-                                             (approve-sandbox) --> [update-sandbox] --> [validate-sandbox]
-                                                                                                 |
-                                                                                                 | tag push only
-                                                                                                 v
-
-app-dev (only on v* tags, once sandbox validates)
-------------------------------------------------------------------
-                    [pre-flight-app-dev] --> [preview-app-dev]
-                                                     |
-                                                     v
-                                             (approve-app-dev) --> [update-app-dev] --> [validate-app-dev]
+  [lint] --> [pre-flight] --> [deploy-sandbox]
+   │          └─ pre-flight.yaml    └─ preview-apply-env.yaml
+   │              (kind cluster,        [preview] --> (approve) --> [deploy] --> [validate]
+   └─ lint.yaml   OIDC check)
+                                              | tag push only
+                                              v
+                             [pre-flight-app-dev] --> [deploy-app-dev]
+                              └─ pre-flight.yaml      └─ preview-apply-env.yaml
+                                                          [preview] --> (approve) --> [deploy] --> [validate]
 ```
 
 ## GitOps architecture
