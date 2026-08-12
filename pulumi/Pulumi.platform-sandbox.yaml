@@ -5,7 +5,7 @@ config:
     wait-seconds: 60
     environment: non-prod
   platform-core:flux:
-    url: https://github.com/Jdavid77/platform-gitops
+    url: https://github.com/tpeh-demo-company/platform-gitops
     version: 2.9.x
   platform-core:network:
     dockerNetwork: vpc-platform-sandbox
