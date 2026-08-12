@@ -1,0 +1,67 @@
+name: Lint & SAST
+
+on:
+  workflow_call:
+
+jobs:
+  lint-actions:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+
+      - name: Install Actions Linter
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+
+      - name: Lint Action workflows
+        run: actionlint
+
+  lint-code:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache uv virtual environment
+        uses: actions/cache@v4
+        with:
+          path: pulumi/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          restore-keys: uv-venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --project pulumi/
+
+      - name: Check code formatting with black
+        run: uv run --project pulumi/ black --check --diff pulumi/
+
+      - name: Type check with mypy
+        run: uv run --project pulumi/ mypy pulumi/ --ignore-missing-imports
+
+  # ── Static analysis ───────────────────────────────────────────────────────────
+  static-analysis:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache uv virtual environment
+        uses: actions/cache@v4
+        with:
+          path: pulumi/.venv
+          key: uv-venv-${{ runner.os }}-${{ hashFiles('pulumi/uv.lock') }}
+          restore-keys: uv-venv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: uv sync --project pulumi/
+
+      - name: Lint with ruff
+        run: uv run --project pulumi/ ruff check pulumi/
+
+      - name: Security scan with bandit
+        run: uv run --project pulumi/ bandit -r pulumi/ -ll --exclude pulumi/.venv
