@@ -1,7 +1,7 @@
 # The Platform Engineer's Handbook - Platform Core
 
-[![Pulumi](https://github.com/Jdavid77/platform-core/actions/workflows/pulumi.yaml/badge.svg)](https://github.com/Jdavid77/platform-core/actions/workflows/pulumi.yaml)
-[![Pulumi Shared](https://github.com/Jdavid77/platform-core/actions/workflows/pulumi-shared.yaml/badge.svg)](https://github.com/Jdavid77/platform-core/actions/workflows/pulumi-shared.yaml)
+[![Pulumi](https://github.com/tpeh-demo-company/platform-core/actions/workflows/pulumi.yaml/badge.svg)](https://github.com/tpeh-demo-company/platform-core/actions/workflows/pulumi.yaml)
+[![Pulumi Shared](https://github.com/tpeh-demo-company/platform-core/actions/workflows/pulumi-shared.yaml/badge.svg)](https://github.com/tpeh-demo-company/platform-core/actions/workflows/pulumi-shared.yaml)
 
 Follow-along repository for *The Platform Engineer's Handbook*.
 
