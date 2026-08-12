@@ -53,6 +53,9 @@ kubectl -n istio-system wait gateway/smoke-gateway \
   --timeout=60s \
   || { echo "ERROR: smoke-gateway did not become Programmed"; exit 1; }
 
+# Give Envoy time to sync xDS routes after the gateway becomes Programmed
+sleep 5
+
 kubectl -n istio-system apply -f "${REPO_ROOT}/smoke/gateway_job.yaml"
 
 kubectl -n istio-system wait \

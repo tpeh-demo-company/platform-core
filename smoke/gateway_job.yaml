@@ -4,7 +4,7 @@ metadata:
   name: smoke-gateway
   namespace: istio-system
 spec:
-  backoffLimit: 0
+  backoffLimit: 5
   ttlSecondsAfterFinished: 120
   template:
     spec:
@@ -24,6 +24,7 @@ spec:
               echo "Testing gateway with Host: $H"
               STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
                 -H "Host: $H" \
+                --connect-timeout 5 \
                 --max-time 10 \
                 --retry 3 \
                 --retry-delay 2 \
