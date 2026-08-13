@@ -24,3 +24,8 @@
   [ "$status" -eq 0 ]
 }
 
+@test "cloudflare tunnel credentials secret exists" {
+  run kubectl get secret cloudflare-tunnel-credentials -n cloudflare-system
+  [ "$status" -eq 0 ]
+}
+

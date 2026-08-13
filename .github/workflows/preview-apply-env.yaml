@@ -120,11 +120,13 @@ jobs:
           echo "DOCKER_NETWORK=$DOCKER_NETWORK" >> "$GITHUB_ENV"
 
       - name: Run bats infrastructure tests
+        working-directory: pulumi
         env:
           PULUMI_STACK: ${{ inputs.environment }}
         run: bats tests/infrastructure.bats
 
       - name: Force Flux reconciliation and smoke test
+        working-directory: pulumi
         env:
           PULUMI_STACK: ${{ inputs.environment }}
           SMOKE_HOST: ${{ inputs.environment }}.local
