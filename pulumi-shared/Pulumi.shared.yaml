@@ -1,14 +1,21 @@
 config:
   auth0:domain: dev-bv2yu2fncfqeitei.us.auth0.com
   auth0:clientId:
-    secure: AAABACfQK9642VzT3LQ21kLNVeQmQtn8Lv21pRenib13qFbsNhd72AbkBc2xyV0dxmtw+eKAwH6SCPTawGoukA==
+    secure: AAABAL5S/0bnKiFbh0ckEJhMEjZjhy5HTVM/JxANstBsDAOZFW+iUEx7+jJjY3Anb+hG1XVl/LutXgSjI/46Uw==
   auth0:clientSecret:
-    secure: AAABAAVfTPSlXm2pj0uiibyLUH5fNp2Wdo0g9/VlC5h1WOOS3PdNKCqIckN8c0LgIBERrH3WvxbphkKJAJaJx676h88nH91noGexJVq2e3wAvM72+IWtD4wJduvYgeal
-  roles:
-    - name: platform-admin
-      description: "Kubernetes Cluster Admin"
-    - name: platform-user
-      description: "Kubernetes User (Read-Only)"
-  clusters:
+    secure: AAABAFNp9LrdjcuVTPDH8PR+EIrVPMuuanQNSL2pfpg6U3OEW2so554keJK677G7Jgnx/M/NAgJE6EGy2gAgCFV4GnJkEQAi38tbeqWa4ELAm2lhvBAf/ziSaOGJtWMa
+  pulumi-shared:clusters:
     - platform-sandbox
     - app-dev
+  pulumi-shared:domain: demo-company.site
+  pulumi-shared:roles:
+    - description: Kubernetes Cluster Admin
+      name: platform-admin
+    - description: Kubernetes User (Read-Only)
+      name: platform-user
+  cloudflare:accountId:
+    secure: AAABAEPZRuTHgzmh0iwb9QB+bk5ME7D7zUx84G+NA6vpIsvCgsglRj3HWGCqymWyY/CU6fMPTcK570Bp9Hfpew==
+  cloudflare:zoneId:
+    secure: AAABAKb4N42qmxux3byst58F+2gqIeb25Mgo5vSKOSSw2dUzSIOpmpjZQvEfsWfjGOtZw2gdVGrwxb+DhqpZjg==
+  cloudflare:apiToken:
+    secure: AAABAA1KT8BgXLDgVSTRL3YHifDgpIpmnzeEh2Rfh8K9GsMFltu4rxWisVrm5uPiMWx8aE+91omcXoNDVC+bzAwEu+ZGouqhmKnvVNthM9HRTZjHxA==
