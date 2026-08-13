@@ -130,11 +130,11 @@ jobs:
           access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
           base_url: https://vault.bitwarden.eu
           secrets: |
-            <bws-uuid-auth0-client-id>         > AUTH0_CLIENT_ID
-            <bws-uuid-auth0-client-secret>     > AUTH0_CLIENT_SECRET
-            <bws-uuid-cloudflare-api-token>    > CF_API_TOKEN
-            <bws-uuid-cloudflare-account-id>   > CF_ACCOUNT_ID
-            <bws-uuid-cloudflare-zone-id>      > CF_ZONE_ID
+            242f7850-9585-42ae-89b9-b4a100e5d726 > AUTH0_CLIENT_ID
+            aa8202a8-c631-4163-9302-b4a100e5d7d9 > AUTH0_CLIENT_SECRET
+            43b53dc4-6cc1-4297-a856-b4a500aaca4d > CF_API_TOKEN
+            4e01704e-6e90-463f-894c-b4a500aac920 > CF_ACCOUNT_ID
+            f315ca37-e323-4a6c-8524-b4a500aac9be > CF_ZONE_ID
 
       - name: Load config from Pulumi stack file
         run: |
