@@ -145,8 +145,8 @@ jobs:
             echo "CLUSTERS=$(yq '.config["pulumi-shared:clusters"] | join(" ")' $cfg)"
           } >> "$GITHUB_ENV"
 
-      - name: Install bats
-        run: npm install -g bats
+      - name: Setup Bats and bats libs
+        uses: bats-core/bats-action@4.0.0
 
       - name: Run shared infrastructure tests
         working-directory: pulumi-shared
