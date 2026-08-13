@@ -55,11 +55,11 @@ setup_file() {
   done
 }
 
-@test "cloudflare wildcard cname exists for each cluster" {
+@test "cloudflare cluster cname exists for each cluster" {
   for cluster in $CLUSTERS; do
     run curl -sf \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      "${CF_API}/zones/${CF_ZONE_ID}/dns_records?type=CNAME&name=*.${cluster}.${DOMAIN}"
+      "${CF_API}/zones/${CF_ZONE_ID}/dns_records?type=CNAME&name=${cluster}.${DOMAIN}"
     [ "$status" -eq 0 ]
     count=$(echo "$output" | jq '.result | length')
     [ "$count" -gt 0 ]
