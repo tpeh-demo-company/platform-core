@@ -32,12 +32,13 @@ def create_tunnel(config: CloudflareTunnelConfig) -> pulumi.Output:
         ),
     )
 
-    # Wildcard CNAME: *.{cluster}.{domain} → <tunnel-id>.cfargotunnel.com
+    # CNAME: {cluster}.{domain} → <tunnel-id>.cfargotunnel.com
+    # Per-service CNAMEs point here instead of directly at the tunnel ID
     cloudflare.Record(
-        f"cloudflare:dns:{config.cluster}:wildcard",
+        f"cloudflare:dns:{config.cluster}",
         cloudflare.RecordArgs(
             zone_id=config.zone_id,
-            name=f"*.{config.cluster}",
+            name=config.cluster,
             type="CNAME",
             ttl=1,  # 1 = auto, required by CF API even for proxied records
             content=tunnel.id.apply(lambda tid: f"{tid}.cfargotunnel.com"),
