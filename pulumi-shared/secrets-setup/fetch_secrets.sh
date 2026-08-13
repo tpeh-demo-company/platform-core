@@ -21,8 +21,8 @@ cloudflare_api_token=$(bws secret list | jq -r '.[] | select(.key == "CLOUDFLARE
     cd ..
     pulumi config set --secret auth0:clientId "$auth0_client_id"
     pulumi config set --secret auth0:clientSecret "$auth0_client_secret"
-    pulumi config set --secret cloudflare:accountId "$cloudflare_account_id"
-    pulumi config set --secret cloudflare:zoneId "$cloudflare_zone_id"
+    pulumi config set --secret cloudflareAccountId "$cloudflare_account_id"
+    pulumi config set --secret cloudflareZoneId "$cloudflare_zone_id"
     pulumi config set --secret cloudflare:apiToken "$cloudflare_api_token"
 )
 

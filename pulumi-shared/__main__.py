@@ -15,7 +15,6 @@ import pulumi
 # Config
 config = pulumi.Config()
 auth0_cfg = pulumi.Config("auth0")
-cf_cfg = pulumi.Config("cloudflare")
 clusters = config.require_object("clusters")
 roles = config.require_object("roles")
 
@@ -42,8 +41,8 @@ cf_tunnels = {
         CloudflareTunnelConfig(
             cluster=cluster,
             domain=config.require("domain"),
-            account_id=cf_cfg.require("accountId"),
-            zone_id=cf_cfg.require("zoneId"),
+            account_id=config.require("cloudflareAccountId"),
+            zone_id=config.require("cloudflareZoneId"),
         )
     )
     for cluster in clusters

@@ -13,9 +13,9 @@ config:
       name: platform-admin
     - description: Kubernetes User (Read-Only)
       name: platform-user
-  cloudflare:accountId:
+  pulumi-shared:cloudflareAccountId:
     secure: AAABAEPZRuTHgzmh0iwb9QB+bk5ME7D7zUx84G+NA6vpIsvCgsglRj3HWGCqymWyY/CU6fMPTcK570Bp9Hfpew==
-  cloudflare:zoneId:
+  pulumi-shared:cloudflareZoneId:
     secure: AAABAKb4N42qmxux3byst58F+2gqIeb25Mgo5vSKOSSw2dUzSIOpmpjZQvEfsWfjGOtZw2gdVGrwxb+DhqpZjg==
   cloudflare:apiToken:
     secure: AAABAA1KT8BgXLDgVSTRL3YHifDgpIpmnzeEh2Rfh8K9GsMFltu4rxWisVrm5uPiMWx8aE+91omcXoNDVC+bzAwEu+ZGouqhmKnvVNthM9HRTZjHxA==
