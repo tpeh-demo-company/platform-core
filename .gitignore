@@ -2,3 +2,5 @@
 venv/
 .actions-runner
 pulumi/.pulumi/kind/
+.mypy_cache/
+.ruff_cache/

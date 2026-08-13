@@ -535,6 +535,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pulumi-cloudflare"
+version = "6.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "parver" },
+    { name = "pulumi" },
+    { name = "semver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/ca/e8e6064d4d9f16dd8652dfc64a97610ccc1cbddcad55dbeeb16fb02d1c19/pulumi_cloudflare-6.19.0.tar.gz", hash = "sha256:9b0f40b0047df38a019bcaf90161f5bae14a815eb160f1f4ae9ed0391369f9a5", size = 1912458, upload-time = "2026-08-06T08:06:44.007Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/01/231b3daee229f5fae074e82879f9261d2c42a8cfd2f793d9081eec8fc355/pulumi_cloudflare-6.19.0-py3-none-any.whl", hash = "sha256:4c22d5fd60fb247b02a1eb9af75371a48e9d985a95fd96edaf9d1e7b38b10924", size = 2901901, upload-time = "2026-08-06T08:06:42.232Z" },
+]
+
+[[package]]
 name = "pulumi-command"
 version = "1.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -577,15 +591,31 @@ wheels = [
 ]
 
 [[package]]
+name = "pulumi-random"
+version = "4.21.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "parver" },
+    { name = "pulumi" },
+    { name = "semver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/95/d648a11cd6976a5251e057b7d716f060a009a4c189373d199cb627e8a278/pulumi_random-4.21.1.tar.gz", hash = "sha256:bb60cebafecaef508cbc00c4df8d9d1f70de1c87c4594bb02815b3302699f20e", size = 22616, upload-time = "2026-07-22T19:27:05.207Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/c3/84a3278781de5e00b2d5002c5f847372b029e845826a3ad2440fc0537cf9/pulumi_random-4.21.1-py3-none-any.whl", hash = "sha256:889943db1a109c1c1e7c5c2d706296a717c366c358b0bec92b77de3747af682a", size = 36076, upload-time = "2026-07-22T19:27:04.209Z" },
+]
+
+[[package]]
 name = "pulumi-shared"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "pulumi" },
     { name = "pulumi-auth0" },
+    { name = "pulumi-cloudflare" },
     { name = "pulumi-command" },
     { name = "pulumi-docker" },
     { name = "pulumi-keycloak" },
+    { name = "pulumi-random" },
     { name = "pulumi-tls" },
 ]
 
@@ -601,9 +631,11 @@ dev = [
 requires-dist = [
     { name = "pulumi", specifier = ">=3.0.0,<4.0.0" },
     { name = "pulumi-auth0", specifier = ">=3.49.0" },
+    { name = "pulumi-cloudflare", specifier = ">=5.0.0" },
     { name = "pulumi-command", specifier = ">=1.2.1" },
     { name = "pulumi-docker", specifier = ">=4.0.0" },
     { name = "pulumi-keycloak", specifier = ">=5.0.0" },
+    { name = "pulumi-random", specifier = ">=4.0.0" },
     { name = "pulumi-tls", specifier = ">=5.0.0" },
 ]
 
