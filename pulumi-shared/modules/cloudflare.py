@@ -27,7 +27,7 @@ def create_tunnel(config: CloudflareTunnelConfig) -> pulumi.Output:
         cloudflare.ZeroTrustTunnelCloudflaredArgs(
             account_id=config.account_id,
             name=config.cluster,
-            secret=secret.base64,
+            tunnel_secret=secret.base64,
             config_src="local",
         ),
     )
@@ -39,6 +39,7 @@ def create_tunnel(config: CloudflareTunnelConfig) -> pulumi.Output:
             zone_id=config.zone_id,
             name=f"*.{config.cluster}",
             type="CNAME",
+            ttl=1,  # 1 = auto, required by CF API even for proxied records
             content=tunnel.id.apply(lambda tid: f"{tid}.cfargotunnel.com"),
             proxied=True,
         ),
