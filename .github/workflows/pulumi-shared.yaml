@@ -115,3 +115,34 @@ jobs:
           work-dir: pulumi-shared
         env:
           PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
+
+  # ── Validate ─────────────────────────────────────────────────────────────────
+  validate-shared:
+    runs-on: ubuntu-latest
+    needs: update-shared
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch secrets from Bitwarden
+        uses: bitwarden/sm-action@v2
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          base_url: https://vault.bitwarden.eu
+          secrets: |
+            <bws-uuid-auth0-client-id>         > AUTH0_CLIENT_ID
+            <bws-uuid-auth0-client-secret>     > AUTH0_CLIENT_SECRET
+            <bws-uuid-cloudflare-api-token>    > CF_API_TOKEN
+            <bws-uuid-cloudflare-account-id>   > CF_ACCOUNT_ID
+            <bws-uuid-cloudflare-zone-id>      > CF_ZONE_ID
+
+      - name: Load config from Pulumi stack file
+        run: |
+          cfg=pulumi-shared/Pulumi.shared.yaml
+          echo "AUTH0_DOMAIN=$(yq '.config["auth0:domain"]' $cfg)"          >> "$GITHUB_ENV"
+          echo "DOMAIN=$(yq '.config["pulumi-shared:domain"]' $cfg)"        >> "$GITHUB_ENV"
+          echo "CLUSTERS=$(yq '.config["pulumi-shared:clusters"] | join(" ")' $cfg)" >> "$GITHUB_ENV"
+
+      - name: Run shared infrastructure tests
+        working-directory: pulumi-shared
+        run: bats tests/shared.bats
