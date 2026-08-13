@@ -2,6 +2,7 @@
 
 import pulumi
 from modules import network, cluster, flux
+from modules.cloudflare import create_tunnel_credentials_secret
 
 # Config
 
@@ -15,6 +16,7 @@ shared = pulumi.StackReference("Jdavid77/pulumi-shared/shared")
 issuer_url = shared.get_output("auth0_issuer_url")
 client_id = shared.get_output(f"auth0_client_id_{pulumi.get_stack()}")
 groups_claim = shared.get_output("oidc_groups_claim")
+tunnel_credentials = shared.get_output(f"cloudflare_tunnel_credentials_{pulumi.get_stack()}")
 
 # Network
 
@@ -85,6 +87,12 @@ flux_manager = flux.FluxOperatorManager(
     age_private_key=sops_cfg.require_secret("agePrivateKey"),
 )
 operator, instance = flux_manager.install()
+
+# Cloudflare tunnel credentials secret
+create_tunnel_credentials_secret(
+    credentials_json=tunnel_credentials,
+    provider=k8s,
+)
 
 # Outputs
 pulumi.export("kubeconfig", pulumi.Output.secret(kubeconfig.stdout))
