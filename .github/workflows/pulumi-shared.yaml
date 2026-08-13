@@ -139,9 +139,11 @@ jobs:
       - name: Load config from Pulumi stack file
         run: |
           cfg=pulumi-shared/Pulumi.shared.yaml
-          echo "AUTH0_DOMAIN=$(yq '.config["auth0:domain"]' $cfg)"          >> "$GITHUB_ENV"
-          echo "DOMAIN=$(yq '.config["pulumi-shared:domain"]' $cfg)"        >> "$GITHUB_ENV"
-          echo "CLUSTERS=$(yq '.config["pulumi-shared:clusters"] | join(" ")' $cfg)" >> "$GITHUB_ENV"
+          {
+            echo "AUTH0_DOMAIN=$(yq '.config["auth0:domain"]' $cfg)"
+            echo "DOMAIN=$(yq '.config["pulumi-shared:domain"]' $cfg)"
+            echo "CLUSTERS=$(yq '.config["pulumi-shared:clusters"] | join(" ")' $cfg)"
+          } >> "$GITHUB_ENV"
 
       - name: Run shared infrastructure tests
         working-directory: pulumi-shared

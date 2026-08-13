@@ -1,9 +1,10 @@
 import json
 from dataclasses import dataclass
 
-import pulumi
 import pulumi_cloudflare as cloudflare
 import pulumi_random as random
+
+import pulumi
 
 
 @dataclass
@@ -51,10 +52,12 @@ def create_tunnel(config: CloudflareTunnelConfig) -> pulumi.Output:
             secret=secret.base64,
             tunnel_id=tunnel.id,
         ).apply(
-            lambda v: json.dumps({
-                "AccountTag": v["account_id"],
-                "TunnelSecret": v["secret"],
-                "TunnelID": v["tunnel_id"],
-            })
+            lambda v: json.dumps(
+                {
+                    "AccountTag": v["account_id"],
+                    "TunnelSecret": v["secret"],
+                    "TunnelID": v["tunnel_id"],
+                }
+            )
         )
     )
