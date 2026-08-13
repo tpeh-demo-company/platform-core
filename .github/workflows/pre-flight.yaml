@@ -40,3 +40,10 @@ jobs:
           pulumi stack output "auth0_client_id_${{ inputs.environment }}" --stack shared | grep -qv '^$'
         env:
           PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
+
+      - name: Verify Cloudflare tunnel configured for ${{ inputs.environment }}
+        working-directory: pulumi-shared
+        run: |
+          pulumi stack output "cloudflare_tunnel_credentials_${{ inputs.environment }}" --show-secrets --stack shared | grep -q 'TunnelID'
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ env.PULUMI_ACCESS_TOKEN }}
