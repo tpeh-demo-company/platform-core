@@ -20,19 +20,17 @@ This repo provisions the core platform: a local [kind](https://kind.sigs.k8s.io/
 | [bats](https://bats-core.readthedocs.io/) | Infrastructure test runner |
 | [bws](https://bitwarden.com/help/secrets-manager-cli/) | Bitwarden Secrets Manager CLI |
 
-You'll also need an Auth0 tenant — see [`pulumi-shared/README.md`](pulumi-shared/README.md).
+You'll also need an Auth0 tenant and a Cloudflare Account — see [`pulumi-shared/README.md`](pulumi-shared/README.md).
 
-**CI setup:** register a self-hosted runner (`RUNNER_TOKEN=<token> ./scripts/start-runner.sh`), create the `platform-sandbox` and `app-dev` GitHub Environments with required reviewers, and add a `BWS_ACCESS_TOKEN` repository secret.
+**CI setup:** register a self-hosted runner (`RUNNER_TOKEN=<token> pulumi/scripts/start-runner.sh`).
 
 ## What's in here
 
 | Path | Description |
 | ---- | ----------- |
 | [`pulumi/`](pulumi/README.md) | Cluster stack — kind cluster, OIDC config, Flux bootstrap |
-| [`pulumi-shared/`](pulumi-shared/README.md) | Auth0/OIDC identity stack — deploy this first |
-| `scripts/start-runner.sh` | Registers and starts the self-hosted GitHub Actions runner |
-| `scripts/flux_reconcile.sh` + `smoke/` | Forces Flux reconciliation and runs an Istio Gateway smoke test |
-| `tests/infrastructure.bats` | Validates Docker network, cluster reachability, and Flux health |
+| [`pulumi-shared/`](pulumi-shared/README.md) | Shared identity & networking stack — Auth0/OIDC + Cloudflare tunnels. Deploy this first. |
+
 
 ## Environment topology
 
@@ -68,7 +66,7 @@ Two independent workflows, one per Pulumi project. `pulumi-shared.yaml` runs on 
 ```text
 pulumi-shared.yaml (push to main, touching pulumi-shared/**)
 ------------------------------------------------------------------
-  [lint] --> [preview-shared] --> (approve-shared) --> [update-shared]
+  [lint] --> [preview-shared] --> (approve-shared) --> [update-shared] --> [validate-shared]
    └─ lint.yaml reusable (black, mypy, ruff, bandit)
 
 
@@ -77,7 +75,7 @@ pulumi.yaml (push to main touching pulumi/**, or tag v*)
   [lint] --> [pre-flight] --> [deploy-sandbox]
    │          └─ pre-flight.yaml    └─ preview-apply-env.yaml
    │              (kind cluster,        [preview] --> (approve) --> [deploy] --> [validate]
-   └─ lint.yaml   OIDC check)
+   └─ lint.yaml   OIDC + Cloudflare check)
                                               | tag push only
                                               v
                              [pre-flight-app-dev] --> [deploy-app-dev]
