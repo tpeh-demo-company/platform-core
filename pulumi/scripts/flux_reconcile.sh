@@ -21,13 +21,23 @@ echo "==> Forcing Flux reconciliation: ${PULUMI_STACK} in ${NAMESPACE}"
 flux reconcile kustomization "${PULUMI_STACK}" -n "${NAMESPACE}" --with-source
 
 # ── Wait for istio-gateway ResourceSet ───────────────────────────────────────
-echo "==> Waiting for ResourceSet istio-gateway to be Ready (namespace: ${INGRESS_NAMESPACE})"
-kubectl -n "flux-system" wait resourceset/istio-gateway \
+echo "==> Waiting for ResourceSet istio-gateway to appear in flux-system"
+DEADLINE=$(( $(date +%s) + 300 ))
+until kubectl -n flux-system get resourceset/istio-gateway &>/dev/null; do
+  if [[ $(date +%s) -ge ${DEADLINE} ]]; then
+    echo "ERROR: ResourceSet istio-gateway never appeared after 300s"
+    exit 1
+  fi
+  sleep 5
+done
+
+echo "==> Waiting for ResourceSet istio-gateway to be Ready"
+kubectl -n flux-system wait resourceset/istio-gateway \
   --for=condition=Ready \
   --timeout=300s \
   || {
-    echo "ERROR: HelmRelease istio-ingress did not become Ready — current status:"
-    kubectl -n "${INGRESS_NAMESPACE}" get helmrelease istio-ingress -o jsonpath='{.status.conditions}' | jq .
+    echo "ERROR: ResourceSet istio-gateway did not become Ready — current status:"
+    kubectl -n flux-system get resourceset/istio-gateway -o jsonpath='{.status.conditions}' | jq .
     exit 1
   }
 
