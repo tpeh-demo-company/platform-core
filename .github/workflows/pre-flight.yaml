@@ -20,8 +20,8 @@ jobs:
 
       - name: Verify Kind cluster is running
         run: |
-          if ! docker ps --format '{{.Names}}' | grep -q '${{ inputs.environment }}'; then
-            echo "Kind cluster '${{ inputs.environment }}' is not running. Please start it before proceeding."
+          if ! docker ps; then
+            echo "Docker is not running. Please start Docker"
             exit 1
           fi
 
