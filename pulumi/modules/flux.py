@@ -45,6 +45,10 @@ class FluxOperatorManager:
                 namespace=self.config.namespace,
                 create_namespace=True,
                 values={
+                    "multitenancy": {
+                        "enabled": True,
+                        "defaultServiceAccount": "default",
+                    },
                     "serviceMonitor": {"create": False},
                     "web": {
                         "networkPolicy": {"create": False},
@@ -97,6 +101,27 @@ class FluxOperatorManager:
         }
         if sync:
             spec["sync"] = sync
+            # Tenants only get their own ServiceAccount; the sync Kustomization
+            # itself must run as kustomize-controller.
+            spec["cluster"] = {
+                "multitenant": True,
+                "tenantDefaultServiceAccount": "default",
+            }
+            spec["kustomize"] = {
+                "patches": [
+                    {
+                        "target": {
+                            "kind": "Kustomization",
+                            "name": self.config.sourceName or "flux-system",
+                        },
+                        "patch": (
+                            "- op: add\n"
+                            "  path: /spec/serviceAccountName\n"
+                            "  value: kustomize-controller\n"
+                        ),
+                    }
+                ]
+            }
 
         return k8s.apiextensions.CustomResource(
             "flux-instance",
